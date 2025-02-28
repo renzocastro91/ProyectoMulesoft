@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+    <http:listener-config name="personaapi-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="personaapi-config" api="resource::4f07041c-2496-431d-976c-1b4af2b049bc:personaapi:1.0.4:oas:zip:personaapi.yaml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="personaapi-main">
+        <http:listener config-ref="personaapi-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="personaapi-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="personaapi-console">
+        <http:listener config-ref="personaapi-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="personaapi-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="patch:\persona\(username):application\json:personaapi-config">
+        <logger level="INFO" message="patch:\persona\(username):application\json:personaapi-config" />
+        <set-payload value="#[payload]" doc:name="Set Payload" doc:id="3579bc9e-62e9-4ce5-b738-8b6c2e4b6f02" />
+        <set-variable value="#[payload.id]" doc:name="Set Variable id_client" doc:id="95de4c4c-2566-432d-a81f-da7e7dfae196" variableName="id_client" />
+        <try doc:name="Try" doc:id="8bd6e4d1-d3e4-4b13-b75d-e9ba307bf410" >
+			<http:request method="PATCH" doc:name="Request" doc:id="d6311155-22dd-4e42-8341-3135da672cab" url="http://localhost:8080/clients/api/clients/{id_client}" sendCorrelationId="AUTO">
+            <http:uri-params><![CDATA[#[output application/java
+---
+{
+	id_client : vars.id_client
+}]]]></http:uri-params>
+        </http:request>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="1ec29826-2ab1-4a82-92a5-1dbd10357a04" >
+					<set-variable value="Error 400 Bad Request" doc:name="Set Variable" doc:id="492ff1c0-efbe-43fa-b676-2201667abbd0" variableName="message" />
+					<set-payload value="#[vars.message]" doc:name="Set Payload" doc:id="eda533b4-ca4d-4e97-90f5-42e7656157e2" />
+				</on-error-propagate>
+			</error-handler>
+		</try>
+        <set-payload value="#[payload]" doc:name="Set Payload" doc:id="adaab9f2-9776-4fa1-b6bc-850dea77f1c7" />
+    </flow>
+    <flow name="get:\persona\external:personaapi-config">
+        <logger level="INFO" message="get:\persona\external:personaapi-config" />
+		<try doc:name="Try" doc:id="5a2d45ca-223b-4837-9f62-68e05e265920" >
+			<http:request method="GET" doc:name="Request" doc:id="d662d349-cad9-44a8-8828-653217305286" url="https://jsonplaceholder.typicode.com/users" sendCorrelationId="AUTO">
+		</http:request>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="1c63c977-679f-4d85-a12e-410746209f6b" >
+					<set-variable value="Error 400 Bad Request" doc:name="Set Variable" doc:id="94752a70-6210-4302-a889-fb8a5b6f7d50" variableName="message" />
+					<set-payload value="#[vars.message]" doc:name="Set Payload" doc:id="f7f79375-9dfd-43e8-aab0-ab8456b2373c" />
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<set-variable value="#[[]]" doc:name="Set Body" doc:id="34e10446-3c5b-4eaa-89e9-deabb931e2ac" variableName="Body" />
+		<foreach doc:name="For Each" doc:id="3aff9c0d-ddbf-438a-8cc9-36811ba7f43c" collection="#[payload[0 to 4]]" >
+			<logger level="INFO" doc:name="Logger" doc:id="601378dd-0ccd-4b75-af5e-4279765e9bb4" message="#[payload]" />
+			<set-variable value="#[output application/json&#10;---&#10;vars.Body ++ [{ id: payload.id, name: payload.name, username: payload.username, email: payload.email, phone: payload.phone, website: payload.website }]]" doc:name="Set Variable" doc:id="6e328c76-a25f-4626-ba94-43510d776027" variableName="Body"/>
+		</foreach>
+		<set-payload value="#[vars.Body]" doc:name="Set Payload" doc:id="ba023cdd-02c7-4697-8344-a65e3b84dd28" />
+    </flow>
+    <flow name="get:\persona\(username):personaapi-config">
+        <logger level="INFO" doc:name="Logger" doc:id="deaf0bca-5744-4f33-9739-f9ec79e3144b" message="get:\persona:personaapi-config" />
+        <set-variable value="#[attributes.uriParams.username]" doc:name="Set Variable username" doc:id="c3452a42-296b-4756-af8e-6a6f514433ac" variableName="username" />
+        <try doc:name="Try" doc:id="ff9e43b5-d2b1-4aa6-8ac1-dc95811a12aa" >
+			<logger level="INFO" doc:name="Logger" doc:id="87ec0e1b-1bfb-4247-b56d-f5ce66e8e2a7" />
+			<validation:is-true doc:name="Is true" doc:id="56938612-672b-4104-af8e-8e65bd13f3c9" expression="#[%dw 2.0 output application/json ---(vars.username matches /^[^0-9][A-Za-z0-9]*$/)]" message="El username no puede comenzar con un número"/>
+			<error-handler>
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="adc65536-d11f-4c0e-a88c-ef769354eb11" >
+					<set-variable value="El username no puede comenzar con un número" doc:name="Set Variable" doc:id="0a9f5ddb-9cde-438a-875c-f8024d301208" variableName="message"/>
+					<set-payload value="#[vars.message]" doc:name="Set Payload" doc:id="a2473691-3f72-437e-9a36-14a348d860ba" />
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<try doc:name="Try" doc:id="7093fbd7-096b-4a85-897d-83ac37dcea3c" >
+			<http:request method="GET" doc:name="Request" doc:id="b0c83e05-b971-4029-8760-b1de0f1edfec" url="http://localhost:8080/clients/api/clients/username/{username}" sendCorrelationId="AUTO">
+            <http:uri-params><![CDATA[#[output application/java
+---
+{
+	username : vars.username
+}]]]></http:uri-params>
+        </http:request>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="df54d774-5580-48dd-9a66-810052b7df4d" >
+					<set-variable value="Error 400 Bad Request" doc:name="Set Variable" doc:id="9519ecb3-a75e-49cc-9342-b75e60cee9f3" variableName="message" />
+					<set-payload value="#[vars.message]" doc:name="Set Payload" doc:id="3dbc7814-d5ad-46bb-9d9b-3ee2237cf931" />
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="4b52ae32-e219-4362-bf66-4d6bd6aecb1f" />
+    </flow>
+    <flow name="post:\persona:application\json:personaapi-config">
+        <logger level="INFO" message="post:\persona:application\json:personaapi-config" />
+        <try doc:name="Try" doc:id="73163587-7d95-4914-9a2a-0c62292bda6e" >
+			<http:request method="POST" doc:name="Request" doc:id="021f30d1-770e-4652-8d70-9aed6b781c6c" url="http://localhost:8080/clients/api/clients/import" sendCorrelationId="AUTO" />
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="dd037a9a-9bc1-49d5-b30d-12f2672759ba" >
+					<set-variable value="Error 400 Bad Request" doc:name="Set Variable" doc:id="ebc8a2d8-7f76-47de-afa2-1f849eeb171f" variableName="message" />
+					<set-payload value="#[vars.message]" doc:name="Set Payload" doc:id="fb4efb23-a1a9-4686-ae09-3ff4985f23d9" />
+				</on-error-propagate>
+			</error-handler>
+		</try>
+        <set-payload value="#[payload]" doc:name="Set Payload" doc:id="d47802db-489f-4028-bdd1-6c26ee52f0e2" />
+    </flow>
+    <flow name="personaapiFlow" doc:id="884763e3-be1e-4dce-bf98-4d51df84acdf">
+        <set-payload value="#[payload]" doc:name="Set Payload" doc:id="9af6bb3d-f5de-4bd0-b3a9-b9f14080f8e2" />
+    </flow>
+</mule>
